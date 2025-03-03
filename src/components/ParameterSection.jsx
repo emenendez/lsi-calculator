@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Box, Slider, Typography, Paper } from '@mui/material';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
-import { LSI_CONSTANTS } from '../utils/lsiCalculator';
+import * as d3 from 'd3';
 
 const ParameterSection = ({ 
   title, 
@@ -16,14 +15,127 @@ const ParameterSection = ({
 }) => {
   const chartRef = useRef(null);
   const [chartWidth, setChartWidth] = useState(0);
+  const [chartHeight, setChartHeight] = useState(0);
 
   useEffect(() => {
     if (chartRef.current) {
       const containerWidth = chartRef.current.getBoundingClientRect().width;
-      // Subtract left and right margins (40px each)
-      setChartWidth(containerWidth - 80);
+      const containerHeight = chartRef.current.getBoundingClientRect().height;
+      setChartWidth(containerWidth - 80); // Subtract margins
+      setChartHeight(containerHeight - 40); // Subtract margins
     }
   }, [chartData]);
+
+  useEffect(() => {
+    if (!chartRef.current || !chartWidth || !chartHeight || !chartData.length) return;
+
+    // Clear previous chart
+    d3.select(chartRef.current).selectAll('*').remove();
+
+    // Create SVG
+    const svg = d3.select(chartRef.current)
+      .append('svg')
+      .attr('width', chartWidth + 80)
+      .attr('height', chartHeight + 40)
+      .append('g')
+      .attr('transform', `translate(40, 20)`);
+
+    // Create scales
+    const xScale = d3.scaleLinear()
+      .domain([min, max])
+      .range([0, chartWidth]);
+
+    const yScale = d3.scaleLinear()
+      .domain([-1, 1])
+      .range([chartHeight, 0]);
+
+    // Add grid lines with labels
+    const yGridLines = d3.axisLeft(yScale)
+      .tickSize(-chartWidth)
+      .tickFormat(val => val.toFixed(1));
+
+    const grid = svg.append('g')
+      .attr('class', 'grid')
+      .attr('opacity', 1)
+      .call(yGridLines);
+
+    // Remove domain line
+    grid.select('.domain').remove();
+
+    // Style grid lines and labels
+    grid.selectAll('.tick')
+      .each(function() {
+        const tick = d3.select(this);
+        // Move labels to the left and style them
+        tick.select('text')
+          .attr('x', -20)
+          .attr('dy', 4)
+          .style('opacity', 1)
+          .style('fill', '#666');
+        // Style the grid lines
+        tick.select('line')
+          .style('stroke', '#ccc')
+          .style('opacity', 0.3);
+      });
+
+    // Add horizontal line at y=0
+    svg.append('line')
+      .attr('x1', 0)
+      .attr('x2', chartWidth)
+      .attr('y1', yScale(0))
+      .attr('y2', yScale(0))
+      .attr('stroke', '#ccc')
+      .attr('stroke-width', 1);
+
+    // Calculate bar width based on data density
+    const BAR_SPACING = 4; // pixels between bars
+    const barWidth = Math.max(
+      4, // minimum bar width
+      (chartWidth / chartData.length) - BAR_SPACING
+    );
+
+    // Add bars
+    svg.selectAll('rect')
+      .data(chartData)
+      .enter()
+      .append('rect')
+      .attr('x', d => xScale(d.value) - barWidth/2)
+      .attr('y', d => d.lsi >= 0 ? yScale(d.lsi) : yScale(0))
+      .attr('width', barWidth)
+      .attr('height', d => Math.abs(yScale(d.lsi) - yScale(0)))
+      .attr('fill', d => d.lsi >= 0 ? '#1976d2' : '#d32f2f')
+      .attr('opacity', 0.8);
+
+    // Add tooltip
+    const tooltip = d3.select(chartRef.current)
+      .append('div')
+      .attr('class', 'tooltip')
+      .style('position', 'absolute')
+      .style('visibility', 'hidden')
+      .style('background-color', 'white')
+      .style('padding', '5px')
+      .style('border', '1px solid #ddd')
+      .style('border-radius', '4px')
+      .style('pointer-events', 'none');
+
+    svg.selectAll('rect')
+      .on('mouseover', (event, d) => {
+        tooltip
+          .style('visibility', 'visible')
+          .html(`LSI: ${d.lsi.toFixed(2)}<br/>${formatValue(d.value)}`)
+          .style('left', `${event.pageX + 10}px`)
+          .style('top', `${event.pageY - 10}px`);
+      })
+      .on('mousemove', (event) => {
+        tooltip
+          .style('left', `${event.pageX + 10}px`)
+          .style('top', `${event.pageY - 10}px`);
+      })
+      .on('mouseout', () => {
+        tooltip.style('visibility', 'hidden');
+      });
+
+  }, [chartData, chartWidth, chartHeight, min, max, unit]);
 
   const formatValue = (val) => {
     if (unit === '°F') return `${val}°F`;
@@ -50,59 +162,55 @@ const ParameterSection = ({
         </Typography>
       </Box>
 
-      <Box ref={chartRef} sx={{ height: 200, mb: 2 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart 
-            data={chartData}
-            margin={{ left: 40, right: 40 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="value" 
-              tickFormatter={formatValue}
-              domain={[min, max]}
-            />
-            <YAxis 
-              domain={[-1, 1]}
-              tickFormatter={(val) => val.toFixed(1)}
-            />
-            <Tooltip 
-              formatter={(val) => [val.toFixed(2), 'LSI']}
-              labelFormatter={formatValue}
-            />
-            <Bar 
-              dataKey="lsi" 
-              fill="#1976d2"
-              opacity={0.8}
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.lsi >= 0 ? '#1976d2' : '#d32f2f'} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </Box>
-
-      <Box sx={{ 
-        display: 'flex',
-        justifyContent: 'center',
-        width: '100%'
-      }}>
-        <Box sx={{ 
-          width: chartWidth,
-          px: 2,
-          ml: 12,  // Increased left margin to account for Y-axis width (56px = 7 units in MUI)
-          mr: 4,
-        }}>
+      <Box 
+        sx={{ 
+          position: 'relative',
+          height: 200,
+          mb: 2
+        }}
+      >
+        <Box 
+          ref={chartRef} 
+          sx={{ 
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            '& .domain': { stroke: '#ccc' },
+            '& .tick line': { stroke: '#ccc' },
+            '& .tick text': { fill: '#666' },
+            '& .grid line': { stroke: '#ccc' }
+          }}
+        />
+        <Box 
+          sx={{ 
+            position: 'absolute',
+            left: 40, // Match the SVG transform x offset
+            width: chartWidth,
+            height: 24,
+            top: 'calc(50% - 2px)',
+            transform: 'translateY(-50%)',
+            zIndex: 1,
+            px: 0 // Remove any padding that might affect alignment
+          }}
+        >
           <Slider
             value={value}
             onChange={onChange}
             min={min}
             max={max}
             step={step}
-            valueLabelDisplay="auto"
+            valueLabelDisplay="on"
             valueLabelFormat={formatValue}
             sx={{
+              width: '100%',
+              '& .MuiSlider-rail': {
+                opacity: 0,
+              },
+              '& .MuiSlider-track': {
+                opacity: 0,
+              },
               '& .MuiSlider-thumb': {
                 height: 24,
                 width: 24,
@@ -115,6 +223,19 @@ const ParameterSection = ({
                   display: 'none',
                 },
               },
+              '& .MuiSlider-mark': {
+                display: 'none',
+              },
+              '& .MuiSlider-valueLabel': {
+                backgroundColor: 'white',
+                color: 'text.primary',
+                border: '1px solid #ccc',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                '&:before': {
+                  borderBottom: '1px solid #ccc',
+                  borderRight: '1px solid #ccc',
+                }
+              }
             }}
           />
         </Box>
