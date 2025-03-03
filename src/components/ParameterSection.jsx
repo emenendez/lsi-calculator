@@ -46,7 +46,7 @@ const ParameterSection = ({
           {title}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Current value: {formatValue(value)} {unit}
+          Current value: {formatValue(value)}
         </Typography>
       </Box>
 
@@ -67,7 +67,7 @@ const ParameterSection = ({
               tickFormatter={(val) => val.toFixed(1)}
             />
             <Tooltip 
-              formatter={(val) => [`LSI: ${val.toFixed(2)}`, 'LSI']}
+              formatter={(val) => [val.toFixed(2), 'LSI']}
               labelFormatter={formatValue}
             />
             <Bar 
