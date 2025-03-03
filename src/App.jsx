@@ -115,7 +115,7 @@ function App() {
             LSI Calculator
           </Typography>
           <Typography variant="subtitle1" color="text.secondary">
-            Langelier Saturation Index: {currentLSI.toFixed(2)}
+            Langelier Saturation Index: <strong>{currentLSI.toFixed(2)}</strong>
           </Typography>
           <Paper 
             elevation={0} 
@@ -158,6 +158,35 @@ function App() {
             />
           );
         })}
+
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            Current LSI Value
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            Langelier Saturation Index: <strong>{currentLSI.toFixed(2)}</strong>
+          </Typography>
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              mt: 2, 
+              p: 2, 
+              backgroundColor: currentLSI >= -0.3 && currentLSI <= 0.3 
+                ? 'success.light' 
+                : 'error.light',
+              color: 'white',
+              borderRadius: 2
+            }}
+          >
+            <Typography variant="body1">
+              {currentLSI >= -0.3 && currentLSI <= 0.3
+                ? 'Water is properly balanced'
+                : currentLSI > 0.3
+                ? 'Water is oversaturated (tendency to scale)'
+                : 'Water is undersaturated (tendency to be corrosive)'}
+            </Typography>
+          </Paper>
+        </Box>
       </Container>
     </ThemeProvider>
   );
