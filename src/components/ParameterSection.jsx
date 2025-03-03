@@ -36,7 +36,7 @@ const ParameterSection = ({
     const svg = d3.select(chartRef.current)
       .append('svg')
       .attr('width', chartWidth + 80)
-      .attr('height', chartHeight + 40)
+      .attr('height', chartHeight + 60)  // Increased from 40 to 60 to accommodate lower labels
       .append('g')
       .attr('transform', `translate(40, 20)`);
 
@@ -71,7 +71,7 @@ const ParameterSection = ({
           .attr('x', -20)
           .attr('dy', 4)
           .style('opacity', 1)
-          .style('fill', '#666');
+          .style('fill', '#333');
         // Style the grid lines
         tick.select('line')
           .style('stroke', '#ccc')
@@ -106,6 +106,47 @@ const ParameterSection = ({
       .attr('fill', d => d.lsi >= 0 ? '#1976d2' : '#d32f2f')
       .attr('opacity', 0.8);
 
+    // Add x-axis labels at bottom
+    const xLabels = svg.append('g')
+      .attr('class', 'x-labels')
+      .attr('transform', `translate(0, ${chartHeight + 24})`); // Adjusted to 24px
+
+    // Add labels at min, middle, and max points
+    const labelPoints = [min, (min + max) / 2, max];
+    
+    // First add the background rectangles
+    xLabels.selectAll('rect')
+      .data(labelPoints)
+      .enter()
+      .append('rect')
+      .attr('x', d => {
+        const textWidth = formatValue(d).length * 8; // Approximate width based on text length
+        const i = labelPoints.indexOf(d);
+        if (i === 0) return xScale(d) - 4; // Left align
+        if (i === 2) return xScale(d) - textWidth - 2; // Right align, adjusted offset from -4 to -2
+        return xScale(d) - textWidth/2 - 4; // Center align
+      })
+      .attr('y', -12) // Position above the text baseline
+      .attr('width', d => formatValue(d).length * 8 + 8) // Add padding
+      .attr('height', 16)
+      .attr('rx', 4) // Rounded corners
+      .attr('ry', 4)
+      .attr('fill', 'white')
+      .attr('opacity', 0.8);
+
+    // Then add the text labels
+    xLabels.selectAll('text')
+      .data(labelPoints)
+      .enter()
+      .append('text')
+      .attr('x', d => xScale(d))
+      .attr('y', 0)
+      .attr('text-anchor', (d, i) => i === 0 ? 'start' : i === 2 ? 'end' : 'middle')
+      .style('fill', '#333')
+      .style('font-size', '12px')
+      .style('font-weight', 'bold')
+      .text(formatValue);
+
     // Add tooltip
     const tooltip = d3.select(chartRef.current)
       .append('div')
@@ -113,23 +154,34 @@ const ParameterSection = ({
       .style('position', 'absolute')
       .style('visibility', 'hidden')
       .style('background-color', 'white')
-      .style('padding', '5px')
-      .style('border', '1px solid #ddd')
+      .style('padding', '8px')
+      .style('border', '1px solid #ccc')
       .style('border-radius', '4px')
-      .style('pointer-events', 'none');
+      .style('box-shadow', '0 1px 3px rgba(0,0,0,0.1)')
+      .style('pointer-events', 'none')
+      .style('font-size', '12px')
+      .style('transform', 'translate(-50%, -100%)'); // Center horizontally and position above pointer
 
     svg.selectAll('rect')
       .on('mouseover', (event, d) => {
+        const svgBounds = chartRef.current.getBoundingClientRect();
+        const mouseX = event.clientX - svgBounds.left;
+        const mouseY = event.clientY - svgBounds.top;
+        
         tooltip
           .style('visibility', 'visible')
           .html(`LSI: ${d.lsi.toFixed(2)}<br/>${formatValue(d.value)}`)
-          .style('left', `${event.pageX + 10}px`)
-          .style('top', `${event.pageY - 10}px`);
+          .style('left', `${mouseX}px`)
+          .style('top', `${mouseY - 10}px`);
       })
       .on('mousemove', (event) => {
+        const svgBounds = chartRef.current.getBoundingClientRect();
+        const mouseX = event.clientX - svgBounds.left;
+        const mouseY = event.clientY - svgBounds.top;
+        
         tooltip
-          .style('left', `${event.pageX + 10}px`)
-          .style('top', `${event.pageY - 10}px`);
+          .style('left', `${mouseX}px`)
+          .style('top', `${mouseY - 10}px`);
       })
       .on('mouseout', () => {
         tooltip.style('visibility', 'hidden');
