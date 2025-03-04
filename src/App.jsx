@@ -13,6 +13,10 @@ import {
 import ParameterSection from './components/ParameterSection';
 import LSIDisplay from './components/LSIDisplay';
 import { calculateLSI, generateChartData, LSI_CONSTANTS } from './utils/lsiCalculator';
+import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+
+// Register service worker
+serviceWorkerRegistration.register();
 
 // Create a theme instance
 const theme = createTheme({
