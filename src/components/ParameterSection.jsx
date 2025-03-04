@@ -103,7 +103,10 @@ const ParameterSection = ({
       .attr('y', d => d.lsi >= 0 ? yScale(d.lsi) : yScale(0))
       .attr('width', barWidth)
       .attr('height', d => Math.abs(yScale(d.lsi) - yScale(0)))
-      .attr('fill', d => d.lsi >= 0 ? '#1976d2' : '#d32f2f')
+      .attr('fill', d => {
+        if (d.lsi >= -0.3 && d.lsi <= 0.3) return '#4caf50'; // Green for values between -0.3 and 0.3
+        return d.lsi >= 0 ? '#1976d2' : '#d32f2f'; // Blue for positive, red for negative
+      })
       .attr('opacity', 0.8);
 
     // Add x-axis labels at bottom

@@ -7,7 +7,8 @@ import {
   useTheme,
   ThemeProvider,
   createTheme,
-  CssBaseline
+  CssBaseline,
+  Slider
 } from '@mui/material';
 import ParameterSection from './components/ParameterSection';
 import LSIDisplay from './components/LSIDisplay';
@@ -46,6 +47,8 @@ const defaultParams = {
   alkalinity: 100,
   cya: 8,
   tds: 300,
+  volume: 220,
+  targetAlkalinity: 100,
 };
 
 function App() {
@@ -130,7 +133,9 @@ function App() {
           <LSIDisplay lsi={currentLSI} />
         </Box>
 
-        {Object.keys(params).map((param) => {
+        {Object.keys(params)
+          .filter(param => ['pH', 'temperature', 'calcium', 'alkalinity', 'cya', 'tds'].includes(param))
+          .map((param) => {
           const config = getParamConfig(param);
           const chartData = generateChartData(param, params[param], params);
           
@@ -150,9 +155,60 @@ function App() {
           );
         })}
 
-        <Box sx={{ mt: 4 }}>
+        <Box sx={{ mt: 4, mb: 4 }}>
           <LSIDisplay lsi={currentLSI} />
         </Box>
+
+        <Paper 
+          elevation={2} 
+          sx={{ 
+            p: 2, 
+            mb: 3,
+            backgroundColor: 'background.paper',
+            borderRadius: 2
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            Alkalinity Increaser Calculator
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                Hot Tub Volume (gallons)
+              </Typography>
+              <Slider
+                value={params.volume || 400}
+                onChange={handleParamChange('volume')}
+                min={100}
+                max={1000}
+                step={10}
+                valueLabelDisplay="on"
+                sx={{ width: '100%' }}
+              />
+            </Box>
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                Target Alkalinity (ppm)
+              </Typography>
+              <Slider
+                value={params.targetAlkalinity || 100}
+                onChange={handleParamChange('targetAlkalinity')}
+                min={LSI_CONSTANTS.MIN_ALKALINITY}
+                max={LSI_CONSTANTS.MAX_ALKALINITY}
+                step={10}
+                valueLabelDisplay="on"
+                sx={{ width: '100%' }}
+              />
+            </Box>
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1, color: 'white' }}>
+              <Typography variant="h6">
+                Amount to Add: {Math.floor(((params.targetAlkalinity || 100) - (params.alkalinity || 0))/20 * (params.volume || 400)/200 * 28.3495)} grams
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+
+
       </Container>
     </ThemeProvider>
   );
