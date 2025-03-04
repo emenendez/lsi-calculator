@@ -208,6 +208,45 @@ function App() {
           </Box>
         </Paper>
 
+        <Paper 
+          elevation={2} 
+          sx={{ 
+            p: 2, 
+            mb: 3,
+            backgroundColor: 'background.paper',
+            borderRadius: 2
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            Ounce to Gram Converter
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                Ounces (oz)
+              </Typography>
+              <Slider
+                defaultValue={1}
+                min={0}
+                max={4}
+                step={0.05}
+                valueLabelDisplay="on"
+                onChange={(e, value) => {
+                  const gramValue = document.getElementById('gramValue');
+                  if (gramValue) {
+                    gramValue.textContent = (value * 28.3495).toFixed(1);
+                  }
+                }}
+                sx={{ width: '100%' }}
+              />
+            </Box>
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1, color: 'white' }}>
+              <Typography variant="h6">
+                <span id="gramValue">28.3</span> g
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
 
       </Container>
     </ThemeProvider>
