@@ -10,6 +10,7 @@ import {
   CssBaseline
 } from '@mui/material';
 import ParameterSection from './components/ParameterSection';
+import LSIDisplay from './components/LSIDisplay';
 import { calculateLSI, generateChartData, LSI_CONSTANTS } from './utils/lsiCalculator';
 
 // Create a theme instance
@@ -114,29 +115,7 @@ function App() {
           <Typography variant="h1" gutterBottom>
             LSI Calculator
           </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Langelier Saturation Index: <strong>{currentLSI.toFixed(2)}</strong>
-          </Typography>
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              mt: 2, 
-              p: 2, 
-              backgroundColor: currentLSI >= -0.3 && currentLSI <= 0.3 
-                ? 'success.light' 
-                : 'error.light',
-              color: 'white',
-              borderRadius: 2
-            }}
-          >
-            <Typography variant="body1">
-              {currentLSI >= -0.3 && currentLSI <= 0.3
-                ? 'Water is properly balanced'
-                : currentLSI > 0.3
-                ? 'Water is oversaturated (tendency to scale)'
-                : 'Water is undersaturated (tendency to be corrosive)'}
-            </Typography>
-          </Paper>
+          <LSIDisplay lsi={currentLSI} />
         </Box>
 
         {Object.keys(params).map((param) => {
@@ -159,33 +138,8 @@ function App() {
           );
         })}
 
-        <Box sx={{ mt: 4, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>
-            Current LSI Value
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Langelier Saturation Index: <strong>{currentLSI.toFixed(2)}</strong>
-          </Typography>
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              mt: 2, 
-              p: 2, 
-              backgroundColor: currentLSI >= -0.3 && currentLSI <= 0.3 
-                ? 'success.light' 
-                : 'error.light',
-              color: 'white',
-              borderRadius: 2
-            }}
-          >
-            <Typography variant="body1">
-              {currentLSI >= -0.3 && currentLSI <= 0.3
-                ? 'Water is properly balanced'
-                : currentLSI > 0.3
-                ? 'Water is oversaturated (tendency to scale)'
-                : 'Water is undersaturated (tendency to be corrosive)'}
-            </Typography>
-          </Paper>
+        <Box sx={{ mt: 4 }}>
+          <LSIDisplay lsi={currentLSI} />
         </Box>
       </Container>
     </ThemeProvider>
