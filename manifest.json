@@ -1,0 +1,29 @@
+{
+  "short_name": "LSI Calc",
+  "name": "LSI Calculator",
+  "description": "Calculate Langelier Saturation Index for your hot tub or pool",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1976d2",
+  "background_color": "#f5f5f5",
+  "orientation": "portrait"
+} 
