@@ -95,10 +95,11 @@ const ParameterSection = ({
     );
 
     // Add bars
-    svg.selectAll('rect')
+    svg.selectAll('.bar')
       .data(chartData)
       .enter()
       .append('rect')
+      .attr('class', 'bar')
       .attr('x', d => xScale(d.value) - barWidth/2)
       .attr('y', d => d.lsi >= 0 ? yScale(d.lsi) : yScale(0))
       .attr('width', barWidth)
@@ -107,7 +108,93 @@ const ParameterSection = ({
         if (d.lsi >= -0.3 && d.lsi <= 0.3) return '#4caf50'; // Green for values between -0.3 and 0.3
         return d.lsi >= 0 ? '#1976d2' : '#d32f2f'; // Blue for positive, red for negative
       })
-      .attr('opacity', 0.8);
+      .attr('opacity', 0.8)
+      .on('mouseover', (event, d) => {
+        const svgBounds = chartRef.current.getBoundingClientRect();
+        const mouseX = event.clientX - svgBounds.left;
+        const mouseY = event.clientY - svgBounds.top;
+        
+        tooltip
+          .style('visibility', 'visible')
+          .html(`LSI: ${d.lsi.toFixed(2)}<br/>${formatValue(d.value)}`)
+          .style('left', `${mouseX}px`)
+          .style('top', `${mouseY - 10}px`);
+      })
+      .on('mousemove', (event) => {
+        const svgBounds = chartRef.current.getBoundingClientRect();
+        const mouseX = event.clientX - svgBounds.left;
+        const mouseY = event.clientY - svgBounds.top;
+        
+        tooltip
+          .style('left', `${mouseX}px`)
+          .style('top', `${mouseY - 10}px`);
+      })
+      .on('mouseout', () => {
+        tooltip.style('visibility', 'hidden');
+      });
+
+    // Add invisible overlay for better touch/click interaction
+    const overlay = svg.append('rect')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('width', chartWidth)
+      .attr('height', chartHeight)
+      .attr('fill', 'transparent')
+      .style('cursor', 'pointer');
+
+    // Add mouse/touch event handlers
+    const updateValueFromPosition = (event) => {
+      const svgBounds = chartRef.current.getBoundingClientRect();
+      const mouseX = event.touches ? event.touches[0].clientX : event.clientX;
+      const mouseY = event.touches ? event.touches[0].clientY : event.clientY;
+      const relativeX = mouseX - svgBounds.left - 40; // 40 is the SVG transform x offset
+      const newValue = xScale.invert(relativeX);
+      // Clamp value to min/max and round to nearest step
+      const clampedValue = Math.min(Math.max(min, newValue), max);
+      const roundedValue = Math.round(clampedValue / step) * step;
+      
+      // Show value tooltip during drag
+      tooltip
+        .style('visibility', 'visible')
+        .html(formatValue(roundedValue))
+        .style('left', `${mouseX - svgBounds.left}px`)
+        .style('top', `${mouseY - svgBounds.top - 10}px`);
+      
+      onChange({ target: { value: roundedValue } }, roundedValue);
+    };
+
+    const handleDragStart = (event) => {
+      event.preventDefault();
+      updateValueFromPosition(event);
+      
+      const handleDragMove = (e) => {
+        e.preventDefault();
+        if (e.touches || (e.buttons & 1)) { // Check if left mouse button is pressed or touch is active
+          updateValueFromPosition(e);
+        } else {
+          handleDragEnd();
+        }
+      };
+      
+      const handleDragEnd = () => {
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleDragEnd);
+        document.removeEventListener('touchmove', handleDragMove);
+        document.removeEventListener('touchend', handleDragEnd);
+        document.removeEventListener('touchcancel', handleDragEnd);
+        tooltip.style('visibility', 'hidden'); // Hide tooltip when drag ends
+      };
+      
+      document.addEventListener('mousemove', handleDragMove);
+      document.addEventListener('mouseup', handleDragEnd);
+      document.addEventListener('touchmove', handleDragMove);
+      document.addEventListener('touchend', handleDragEnd);
+      document.addEventListener('touchcancel', handleDragEnd);
+    };
+
+    overlay
+      .on('mousedown', handleDragStart)
+      .on('touchstart', handleDragStart);
 
     // Add x-axis labels at bottom
     const xLabels = svg.append('g')
@@ -165,30 +252,11 @@ const ParameterSection = ({
       .style('font-size', '12px')
       .style('transform', 'translate(-50%, -100%)'); // Center horizontally and position above pointer
 
+    // Remove the duplicate tooltip event handlers at the bottom of the file
     svg.selectAll('rect')
-      .on('mouseover', (event, d) => {
-        const svgBounds = chartRef.current.getBoundingClientRect();
-        const mouseX = event.clientX - svgBounds.left;
-        const mouseY = event.clientY - svgBounds.top;
-        
-        tooltip
-          .style('visibility', 'visible')
-          .html(`LSI: ${d.lsi.toFixed(2)}<br/>${formatValue(d.value)}`)
-          .style('left', `${mouseX}px`)
-          .style('top', `${mouseY - 10}px`);
-      })
-      .on('mousemove', (event) => {
-        const svgBounds = chartRef.current.getBoundingClientRect();
-        const mouseX = event.clientX - svgBounds.left;
-        const mouseY = event.clientY - svgBounds.top;
-        
-        tooltip
-          .style('left', `${mouseX}px`)
-          .style('top', `${mouseY - 10}px`);
-      })
-      .on('mouseout', () => {
-        tooltip.style('visibility', 'hidden');
-      });
+      .on('mouseover', null)
+      .on('mousemove', null)
+      .on('mouseout', null);
 
   }, [chartData, chartWidth, chartHeight, min, max, unit]);
 
@@ -241,8 +309,14 @@ const ParameterSection = ({
             left: 40, // Match the SVG transform x offset
             width: chartWidth,
             height: 24,
-            top: 'calc(50% - 2px)',
-            transform: 'translateY(-50%)',
+            top: {
+              xs: 'calc(50% - 2px)', // Mobile positioning
+              sm: 'calc(50% - 5px)' // Desktop positioning
+            },
+            transform: {
+              xs: 'translateY(calc(50% + 4px))', // Mobile positioning
+              sm: 'translateY(calc(50% + 9px))' // Desktop positioning
+            },
             zIndex: 1,
             px: 0 // Remove any padding that might affect alignment
           }}
@@ -258,21 +332,21 @@ const ParameterSection = ({
             sx={{
               width: '100%',
               '& .MuiSlider-rail': {
-                opacity: 0,
+                display: 'none',
               },
               '& .MuiSlider-track': {
-                opacity: 0,
+                display: 'none',
               },
               '& .MuiSlider-thumb': {
-                height: 24,
-                width: 24,
-                backgroundColor: '#fff',
-                border: '2px solid currentColor',
-                '&:focus, &:hover, &.Mui-active, &.Mui-focusVisible': {
-                  boxShadow: 'inherit',
-                },
+                height: 0,
+                width: 0,
+                visibility: 'visible',
                 '&:before': {
                   display: 'none',
+                },
+                '&:hover, &.Mui-focusVisible, &.Mui-active': {
+                  boxShadow: 'none',
+                  outline: 'none',
                 },
               },
               '& .MuiSlider-mark': {
@@ -283,9 +357,18 @@ const ParameterSection = ({
                 color: 'text.primary',
                 border: '1px solid #ccc',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                top: {
+                  xs: 2, // Mobile spacing
+                  sm: 5  // Desktop spacing
+                },
                 '&:before': {
-                  borderBottom: '1px solid #ccc',
-                  borderRight: '1px solid #ccc',
+                  borderTop: '1px solid #ccc',
+                  borderLeft: '1px solid #ccc',
+                  top: {
+                    xs: -4, // Mobile arrow position
+                    sm: -5  // Desktop arrow position
+                  },
+                  transform: 'translate(-50%, 0) rotate(45deg)'
                 }
               }
             }}
