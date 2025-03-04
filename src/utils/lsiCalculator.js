@@ -1,67 +1,82 @@
 // LSI calculation constants and functions
 export const LSI_CONSTANTS = {
-  SATURATION_PH: 12.1,
+  SATURATION_PH: 9.3, // Base saturation pH before adjustments
   MIN_TEMP: 80,
   MAX_TEMP: 110,
   MIN_PH: 6.0,
   MAX_PH: 8.4,
   MIN_CALCIUM: 0,
-  MAX_CALCIUM: 500,
+  MAX_CALCIUM: 1000,
   MIN_ALKALINITY: 0,
-  MAX_ALKALINITY: 200,
+  MAX_ALKALINITY: 400,
   MIN_CYA: 0,
   MAX_CYA: 50,
+  MIN_TDS: 300,
+  MAX_TDS: 3000,
 };
 
-// Temperature factor lookup table (simplified)
+// Temperature factor calculation using proper formula
+// -13.12 x Log10(oC + 273) + 34.55
 const getTemperatureFactor = (temp) => {
-  const factors = {
-    32: 0.0,
-    40: 0.1,
-    50: 0.2,
-    60: 0.3,
-    70: 0.4,
-    80: 0.5,
-    90: 0.6,
-    100: 0.7,
-    110: 0.8,
-    120: 0.9,
-  };
-  
-  // Find closest temperature in lookup table
-  const temps = Object.keys(factors).map(Number);
-  const closest = temps.reduce((prev, curr) => 
-    Math.abs(curr - temp) < Math.abs(prev - temp) ? curr : prev
-  );
-  
-  return factors[closest];
+  // Convert Fahrenheit to Celsius for internal calculation
+  const tempC = (temp - 32) * (5/9);
+  return (-13.12 * Math.log10(tempC + 273)) + 34.55;
 };
 
-// Calcium factor calculation
+// Calcium factor calculation using proper formula
 const getCalciumFactor = (calcium) => {
-  return Math.log10((calcium + 1) / 40);
+  return Math.log10(calcium) - 0.4;
 };
 
-// Alkalinity factor calculation
-const getAlkalinityFactor = (alkalinity) => {
-  return Math.log10((alkalinity + 1) / 80);
+// Calculate cyanurate alkalinity based on CYA and pH
+const getCyanurateAlkalinity = (cya, pH) => {
+  if (cya <= 0) return 0;
+  // Calculate ionization fraction (alpha)
+  const alpha = 1 / (1 + Math.pow(10, 6.51 - pH));
+  // Return cyanurate alkalinity contribution
+  return cya * alpha;
 };
 
-// CYA factor calculation (simplified)
-const getCYAFactor = (cya) => {
-  return -0.1 * (cya / 30); // Simplified approximation
+// Alkalinity factor calculation using proper formula
+const getAlkalinityFactor = (alkalinity, cya, pH) => {
+  // Subtract cyanurate alkalinity to total alkalinity
+  const cyaAlkalinity = getCyanurateAlkalinity(cya, pH);
+  const effectiveAlkalinity = alkalinity - cyaAlkalinity;
+  return Math.log10(effectiveAlkalinity);
+};
+
+// TDS factor calculation using proper formula
+// (Log10[TDS] - 1)/10
+const getTDSFactor = (tds) => {
+  return (Math.log10(tds) - 1)/10;
+};
+
+// Calculate saturation pH based on temperature, TDS, and other factors
+const calculateSaturationPH = (tf, cf, af, tdsFactor) => {
+  return LSI_CONSTANTS.SATURATION_PH + tdsFactor + tf - cf - af;
 };
 
 // Main LSI calculation function
 export const calculateLSI = (params) => {
-  const { pH, temperature, calcium, alkalinity, cya } = params;
+  const { 
+    pH, 
+    temperature, 
+    calcium, 
+    alkalinity, 
+    cya,
+    tds
+  } = params;
   
   const tf = getTemperatureFactor(temperature);
   const cf = getCalciumFactor(calcium);
-  const af = getAlkalinityFactor(alkalinity);
-  const cyaf = getCYAFactor(cya);
+  const af = getAlkalinityFactor(alkalinity, cya, pH);
+  const tdsFactor = getTDSFactor(tds);
   
-  return pH + tf + cf + af + cyaf - LSI_CONSTANTS.SATURATION_PH;
+  // Calculate saturation pH dynamically
+  const pHs = calculateSaturationPH(tf, cf, af, tdsFactor);
+  
+  // Calculate final LSI
+  return pH - pHs;
 };
 
 // Generate data points for charts
@@ -95,19 +110,46 @@ export const generateChartData = (param, value, otherParams) => {
       max = LSI_CONSTANTS.MAX_CYA;
       step = 1;
       break;
+    case 'tds':
+      min = LSI_CONSTANTS.MIN_TDS;
+      max = LSI_CONSTANTS.MAX_TDS;
+      step = 100;
+      break;
     default:
+      console.warn('Unknown parameter:', param);
       return [];
   }
   
+  // Ensure all required parameters have default values
+  const params = {
+    pH: 7.5,
+    temperature: 80,
+    calcium: 250,
+    alkalinity: 120,
+    cya: 30,
+    tds: 300,
+    ...otherParams
+  };
+  
   for (let i = min; i <= max; i += step) {
-    const params = {
-      ...otherParams,
+    const newParams = {
+      ...params,
       [param]: i,
     };
-    data.push({
-      value: i,
-      lsi: calculateLSI(params),
-    });
+    
+    try {
+      const lsi = calculateLSI(newParams);
+      // Only add valid LSI values
+      if (!isNaN(lsi) && isFinite(lsi)) {
+        data.push({
+          value: i,
+          lsi: lsi,
+        });
+      }
+    } catch (e) {
+      console.warn(`Error calculating LSI for ${param}=${i}:`, e);
+      continue;
+    }
   }
   
   return data;

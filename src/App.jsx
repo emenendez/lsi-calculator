@@ -40,17 +40,22 @@ const theme = createTheme({
 const STORAGE_KEY = 'lsi_calculator_params';
 
 const defaultParams = {
-  pH: 7.2,
-  temperature: 104,
-  calcium: 250,
-  alkalinity: 120,
-  cya: 30,
+  pH: 7.5,
+  temperature: 100,
+  calcium: 150,
+  alkalinity: 100,
+  cya: 8,
+  tds: 300,
 };
 
 function App() {
   const [params, setParams] = useState(() => {
     const savedParams = localStorage.getItem(STORAGE_KEY);
-    return savedParams ? JSON.parse(savedParams) : defaultParams;
+    // Merge saved params with defaults to ensure all parameters exist
+    return {
+      ...defaultParams,
+      ...(savedParams ? JSON.parse(savedParams) : {})
+    };
   });
 
   const currentLSI = calculateLSI(params);
@@ -102,6 +107,13 @@ function App() {
         step: 1,
         min: LSI_CONSTANTS.MIN_CYA,
         max: LSI_CONSTANTS.MAX_CYA,
+      },
+      tds: {
+        title: 'Total Dissolved Solids',
+        unit: 'ppm',
+        step: 100,
+        min: LSI_CONSTANTS.MIN_TDS,
+        max: LSI_CONSTANTS.MAX_TDS,
       },
     };
     return configs[param];
