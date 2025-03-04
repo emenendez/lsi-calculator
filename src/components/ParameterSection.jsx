@@ -122,7 +122,7 @@ const ParameterSection = ({
       .attr('x', d => {
         const textWidth = formatValue(d).length * 8; // Approximate width based on text length
         const i = labelPoints.indexOf(d);
-        if (i === 0) return xScale(d) - 4; // Left align
+        if (i === 0) return xScale(d) - 6; // Left align, increased offset from -4 to -6
         if (i === 2) return xScale(d) - textWidth - 2; // Right align, adjusted offset from -4 to -2
         return xScale(d) - textWidth/2 - 4; // Center align
       })
@@ -205,12 +205,9 @@ const ParameterSection = ({
         borderRadius: 2
       }}
     >
-      <Box sx={{ mb: 2 }}>
+      <Box>
         <Typography variant="h6" gutterBottom>
           {title}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Current value: {formatValue(value)}
         </Typography>
       </Box>
 
